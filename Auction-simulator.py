@@ -35,7 +35,7 @@ def generate_bidder_valuations():
     for bidder in range(1, s + 1):
         valuations = {}
         for item in range(n):
-            valuations[frozenset([item])] = {item: random.uniform(10, 100)}
+            valuations[frozenset([item])] = {item: random.uniform(-10, 20)}
         for k in range(2, n + 1):
             for bundle in itertools.combinations(range(n), k):
                 bundle_set = frozenset(bundle)
@@ -44,6 +44,8 @@ def generate_bidder_valuations():
                     increase_percentage = random.uniform(increase_min, increase_max)
                     for item in partition_valuation:
                         partition_valuation[item] *= (1 + increase_percentage)
+                    valuations[bundle_set] = partition_valuation
+                else 
                     valuations[bundle_set] = partition_valuation
         bidder_valuations[bidder] = valuations
     return bidder_valuations
