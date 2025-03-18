@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 n = 7 # Number of items
 s = 15  # Number of bidders
 increase_min, increase_max = -0.45, 0.05
-num_runs = 100
+num_runs = 10
 limit_prices={item: 0 for item in range(n)}
 timeout = 100 #timeout to use when looking for the solution of the Combinatorial auction, in millisecond
 
