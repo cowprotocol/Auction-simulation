@@ -4,10 +4,10 @@ import time
 import matplotlib.pyplot as plt
 
 # Parameters
-n = 3 # Number of items
-s = 2  # Number of bidders
-increase_min, increase_max = -0.45, 0.0
-num_runs = 1
+n = 7 # Number of items
+s = 15  # Number of bidders
+increase_min, increase_max = -0.45, 0.05
+num_runs = 100
 limit_prices={item: 0 for item in range(n)}
 timeout = 100 #timeout to use when looking for the solution of the Combinatorial auction, in millisecond
 
@@ -142,7 +142,7 @@ def combinatorial_auction_with_timeout(bidder_valuations, timeout_ms, calculate_
     start_time = time.time()
     timeout_sec = timeout_ms * 1000
     timed_out = 0
-    counter=0
+ #   counter=0
     rewards={}
 
     subsets.sort(key=lambda s: -len(s))  # Prioritize larger subsets
@@ -150,12 +150,12 @@ def combinatorial_auction_with_timeout(bidder_valuations, timeout_ms, calculate_
 
 
     def backtrack(remaining, current_partition, current_value):
-        nonlocal best_value, best_partition, counter,   timeout_sec
+        nonlocal best_value, best_partition,   timeout_sec
 
         if current_value > best_value:
             best_value = current_value
             best_partition[:] = current_partition[:]  # Ensure best_partition is updated properly
-            counter +=1
+       #     counter +=1
         for bidder, subset, _ in subsets_with_values:
             if (time.time() - start_time) * 1000 > timeout_sec:
                 timed_out = 1
@@ -171,7 +171,7 @@ def combinatorial_auction_with_timeout(bidder_valuations, timeout_ms, calculate_
             valuations_without_bidder = {b: v for b, v in bidder_valuations.items() if b != bidder}
             _, _, cf_total_value, _ = combinatorial_auction_with_timeout(valuations_without_bidder, timeout, calculate_rewards=0)
             rewards[bidder] = best_value - cf_total_value
-    print(counter)
+ #   print(counter)
     return best_partition, rewards, best_value, timed_out
 
 
