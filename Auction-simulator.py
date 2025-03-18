@@ -11,7 +11,7 @@ num_runs = 100
 limit_prices={item: 0 for item in range(n)}
 timeout = 100 #timeout to use when looking for the solution of the Combinatorial auction, in millisecond
 
-# Helper to calculate the best partition of a set. Unlike the later function that computes the ourcome of the combinatorial auction, here is important that we maintain
+# Helper to calculate the best partition of a set. Unlike the later function that computes the ourcome of the combinatorial auction, here is important that we keep track of the value of each item in a bundle (and not just the total value of a bundle)
 def best_partition(subset, valuations):
     if subset in valuations:
         return valuations[subset]
@@ -31,7 +31,7 @@ def best_partition(subset, valuations):
                     best_valuation.update(valuation2)
         return best_valuation
 
-# helper function to filter a set of bids based on some reference values: filters bids by keeping only those for which each item's valuation is strictly greater than the provided reference values. It takes an input a bundle size to that will not be filtered 
+# helper function to filter a set of bids based on some reference values: filters bids by keeping only those for which each item's valuation is strictly greater than the provided reference values. You can also specify a bundle size that will not be filtered 
 
 def filter_bids_by_reference(valuations, reference_values, no_filter_bundle_size=-1):
     filtered_valuations = {
@@ -42,7 +42,7 @@ def filter_bids_by_reference(valuations, reference_values, no_filter_bundle_size
     return filtered_valuations
 
 
-# generate bidders valuation, compute the reference for fairness, and outputs the filtered sets of bids
+# generate bidders' valuation and bids, compute the reference for fairness, and output both the unfiltered set of bids and the filtered sets of bids
 def generate_bidder_valuations():
     bidder_valuations = {}
     bidder_valuations_fair = {}
@@ -78,7 +78,7 @@ def generate_bidder_valuations():
   #  print(f' bidders valuations filtered {bidder_valuations_fair}')
     return bidder_valuations, bidder_valuations_fair
 
-# repeated batch auction until all orders are executed
+# smulates a repeated batch auction (repeat until all orders are executed)
 def run_batch_auctions(bidder_valuations):
     remaining_items = set(range(n))
     winning_bids = []
@@ -111,7 +111,7 @@ def run_batch_auctions(bidder_valuations):
         remaining_items -= set(best_bid)
     return winning_bids
 
-# note that the winners of the simple combinatorial auction (which looks at the bid with the highest score, then the bid with the second-highest score and so on) are the same as the winners in the repeated batch auctions
+# simulates a simple combinatorial auction (which looks at the bid with the highest score, then the bid with the second-highest score, and so on). Note that the winners of the simple combinatorial auction are the same as the winners in the repeated batch auctions
 def run_simple_combinatorial_auction(bidder_valuations):
     winning_bids  = run_batch_auctions(bidder_valuations)
     total_value = sum(value for _, _, value, _ in winning_bids)
@@ -123,7 +123,7 @@ def run_simple_combinatorial_auction(bidder_valuations):
         rewards[bidder] = total_value - cf_total_value
     return winning_bids, rewards
 
-# the full combinatorial auction
+# simulated the full combinatorial auction
 def combinatorial_auction_with_timeout(bidder_valuations, timeout_ms, calculate_rewards=1 ):
     # Convert bidder_valuations to [(bidder, subset, total_value of the subset)]
     subsets_with_values = [
