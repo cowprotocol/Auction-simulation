@@ -9,7 +9,7 @@ s = 15  # Number of bidders
 increase_min, increase_max = -0.45, 0.05
 num_runs = 10
 limit_prices={item: 0 for item in range(n)}
-timeout = 100 #timeout to use when looking for the solution of the Combinatorial auction, in millisecond
+max_runs = 100000 #max iterations when looking for the solution of the Combinatorial auction, in millisecond
 
 # Helper to calculate the best partition of a set. Unlike the later function that computes the ourcome of the combinatorial auction, here is important that we keep track of the value of each item in a bundle (and not just the total value of a bundle)
 def best_partition(subset, valuations):
@@ -139,30 +139,30 @@ def combinatorial_auction_with_timeout(bidder_valuations, timeout_ms, calculate_
 
     best_value = float('-inf')
     best_partition = []
-    start_time = time.time()
-    timeout_sec = timeout_ms * 1000
-    timed_out = 0
- #   counter=0
     rewards={}
 
-    subsets.sort(key=lambda s: -len(s))  # Prioritize larger subsets
 
 
 
     def backtrack(remaining, current_partition, current_value):
-        nonlocal best_value, best_partition,   timeout_sec
+        nonlocal best_value, best_partition, counter, timed_out
 
         if current_value > best_value:
             best_value = current_value
             best_partition[:] = current_partition[:]  # Ensure best_partition is updated properly
-       #     counter +=1
+            
         for bidder, subset, _ in subsets_with_values:
-            if (time.time() - start_time) * 1000 > timeout_sec:
-                timed_out = 1
-                return
-            if subset.issubset(remaining):
+            
+            if counter<max_runs and subset.issubset(remaining):
                 subset_value = subset_values[(bidder, frozenset(subset))]
+                counter +=1
                 backtrack(remaining - subset, current_partition + [[bidder, subset]], current_value + subset_value)
+                
+            elif counter>=max_runs:
+                timed_out=1
+                return
+            else:
+                return
     
     backtrack(S, [], 0)
     
