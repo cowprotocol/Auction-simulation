@@ -31,7 +31,7 @@ def best_partition(subset, valuations):
                     best_valuation.update(valuation2)
         return best_valuation
 
-# helper function to filter a set of bids based on some reference values: filters bids by keeping only those for which each item's valuation is strictly greater than the provided reference values. You can also specify a bundle size that will not be filtered 
+# helper function to filter a set of bids based on some reference values: filters bids by keeping only those for which each item's valuation is greater than the provided reference values. You can also specify a bundle size that will not be filtered 
 
 def filter_bids_by_reference(valuations, reference_values, no_filter_bundle_size=-1):
     filtered_valuations = {
