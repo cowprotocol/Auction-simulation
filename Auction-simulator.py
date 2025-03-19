@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 n = 7 # Number of items
 s = 15  # Number of bidders
 increase_min, increase_max = -0.45, 0.05
+valuation_min, valuation_max = -10, 30
 num_runs = 10
 limit_prices={item: 0 for item in range(n)}
 max_runs = 100000 #max iterations when looking for the solution of the Combinatorial auction, in millisecond
@@ -51,7 +52,7 @@ def generate_bidder_valuations():
     for bidder in range(1, s + 1):
         valuations = {}
         for item in range(n):
-            value = random.uniform(-10, 30)
+            value = random.uniform(valuation_min, valuation_max)
             valuations[frozenset([item])] = {item: value}
 
             if value > reference[item]:
