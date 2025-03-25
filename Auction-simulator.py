@@ -10,7 +10,7 @@ increase_min, increase_max = -0.45, 0.05
 valuation_min, valuation_max = -10, 30
 num_runs = 10
 limit_prices={item: 0 for item in range(n)}
-max_runs = 100000 #max iterations when looking for the solution of the Combinatorial auction
+max_runs = 100000 #max iterations when looking for the solution of the Combinatorial auction, after which a "timeout" is declared
 
 # Helper to calculate the best partition of a set. Unlike the later function that computes the ourcome of the combinatorial auction, here is important that we keep track of the value of each item in a bundle (and not just the total value of a bundle)
 def best_partition(subset, valuations):
@@ -125,7 +125,7 @@ def run_simple_combinatorial_auction(bidder_valuations):
     return winning_bids, rewards
 
 # simulated the full combinatorial auction
-def combinatorial_auction_with_timeout(bidder_valuations, timeout_ms, calculate_rewards=1 ):
+def combinatorial_auction_with_timeout(bidder_valuations, calculate_rewards=1 ):
     # Convert bidder_valuations to [(bidder, subset, total_value of the subset)]
     subsets_with_values = [
         (bidder, set(bundle), sum(valuation_dict.values()))
@@ -173,7 +173,7 @@ def combinatorial_auction_with_timeout(bidder_valuations, timeout_ms, calculate_
     if calculate_rewards == 1:
         for bidder in set(b for b, _ in best_partition):
             valuations_without_bidder = {b: v for b, v in bidder_valuations.items() if b != bidder}
-            _, _, cf_total_value, _ = combinatorial_auction_with_timeout(valuations_without_bidder, timeout, calculate_rewards=0)
+            _, _, cf_total_value, _ = combinatorial_auction_with_timeout(valuations_without_bidder, calculate_rewards=0)
             rewards[bidder] = best_value - cf_total_value
  #   print(counter)
     return best_partition, rewards, best_value, timed_out
@@ -200,13 +200,13 @@ for run in range(num_runs):
     batch_negative += sum(1 for r in batch_rewards if r < 0)
     
 
-    _, CA_rew, score, T_out = combinatorial_auction_with_timeout(bidder_valuations, timeout)
+    _, CA_rew, score, T_out = combinatorial_auction_with_timeout(bidder_valuations)
     CA_scores.append(score)
     CA_rewards.append(CA_rew)
     CA_rewards_negative += sum(1 for r in CA_rew if r < 0)
     T_out_count += T_out
     
-    _, CA_rew_fair, score_fair, T_out_fair  = combinatorial_auction_with_timeout(bidder_valuations_fair, timeout)
+    _, CA_rew_fair, score_fair, T_out_fair  = combinatorial_auction_with_timeout(bidder_valuations_fair)
     CA_scores_fair.append(score_fair)
     CA_rewards_fair.append(CA_rew_fair)
     CA_rewards_negative_fair += sum(1 for r in CA_rew_fair if r < 0)
@@ -241,4 +241,3 @@ CA_Positive_rewards_fair = sum(
     reward for rewards_dict in CA_rewards_fair for reward in rewards_dict.values() if reward > 0
 )
 print(f'Average Fair Combinatorial Auction Score: {sum(CA_scores_fair)/num_runs:.2f}, Average Rewards: {CA_Positive_rewards_fair/num_runs:.2f}, Negative Rewards: {CA_rewards_negative_fair}, fraction of timeouts: {T_out_fair_count/num_runs}')
-
