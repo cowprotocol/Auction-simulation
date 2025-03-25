@@ -10,7 +10,7 @@ increase_min, increase_max = -0.45, 0.05
 valuation_min, valuation_max = -10, 30
 num_runs = 10
 limit_prices={item: 0 for item in range(n)}
-max_runs = 100000 #max iterations when looking for the solution of the Combinatorial auction, in millisecond
+max_runs = 100000 #max iterations when looking for the solution of the Combinatorial auction
 
 # Helper to calculate the best partition of a set. Unlike the later function that computes the ourcome of the combinatorial auction, here is important that we keep track of the value of each item in a bundle (and not just the total value of a bundle)
 def best_partition(subset, valuations):
@@ -141,7 +141,10 @@ def combinatorial_auction_with_timeout(bidder_valuations, timeout_ms, calculate_
     best_value = float('-inf')
     best_partition = []
     rewards={}
-
+    
+    timed_out = 0
+    counter = 0
+    
 
 
 
