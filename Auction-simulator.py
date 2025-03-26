@@ -2,14 +2,14 @@ import itertools
 import random
 import time
 import matplotlib.pyplot as plt
+from copy import deepcopy
 
 # Parameters
 n = 7 # Number of items
 s = 15  # Number of bidders
-increase_min, increase_max = -0.45, 0.05
-valuation_min, valuation_max = -10, 30
+increase_min, increase_max = -0.45, 0.05 #the additional efficiencies from batching orders (or smaller batched) is calculated by: drawing a value v between these two parameters, and then multipylyng the value of the individual orders (or smaller batches) by min(1,v) 
+valuation_min, valuation_max = -10, 30 #the amount that a solver can return when executing a single order is a uniform random variable between these two values. Limit prices are assumed zero, so negative values means that the solver has no solution for the order
 num_runs = 10
-limit_prices={item: 0 for item in range(n)}
 max_runs = 100000 #max iterations when looking for the solution of the Combinatorial auction, after which a "timeout" is declared
 
 # Helper to calculate the best partition of a set. Unlike the later function that computes the ourcome of the combinatorial auction, here is important that we keep track of the value of each item in a bundle (and not just the total value of a bundle)
@@ -23,8 +23,8 @@ def best_partition(subset, valuations):
             for partition in itertools.combinations(subset, i):
                 part1 = frozenset(partition)
                 part2 = subset - part1
-                valuation1 = best_partition(part1, valuations)
-                valuation2 = best_partition(part2, valuations)
+                valuation1 = deepcopy(best_partition(part1, valuations))
+                valuation2 = deepcopy(best_partition(part2, valuations))
                 total_value = sum(valuation1.values()) + sum(valuation2.values())
                 if total_value > max_value:
                     max_value = total_value
@@ -36,7 +36,7 @@ def best_partition(subset, valuations):
 
 def filter_bids_by_reference(valuations, reference_values, no_filter_bundle_size=-1):
     filtered_valuations = {
-        bundle: valuation
+        bundle: deepcopy(valuation)
         for bundle, valuation in valuations.items()
         if len(bundle) == no_filter_bundle_size or all(valuation[item] >= reference_values[item] for item in bundle)
     }
@@ -47,7 +47,7 @@ def filter_bids_by_reference(valuations, reference_values, no_filter_bundle_size
 def generate_bidder_valuations():
     bidder_valuations = {}
     bidder_valuations_fair = {}
-    reference = limit_prices.copy()
+    reference = deepcopy(limit_prices)
 
     for bidder in range(1, s + 1):
         valuations = {}
@@ -64,9 +64,10 @@ def generate_bidder_valuations():
                 partition_valuation = best_partition(bundle_set, valuations)
 
                 increase_percentage = max(0, random.uniform(increase_min, increase_max))
+                partition_valuation = deepcopy(partition_valuation)
                 for item in partition_valuation:
                     partition_valuation[item] *= (1 + increase_percentage)
-                valuations[bundle_set] = partition_valuation
+                valuations[bundle_set] = deepcopy(partition_valuation)
 
         valuations_above_limit = filter_bids_by_reference(valuations, limit_prices)
         bidder_valuations[bidder] = valuations_above_limit
@@ -128,10 +129,11 @@ def run_simple_combinatorial_auction(bidder_valuations):
 def combinatorial_auction_with_timeout(bidder_valuations, calculate_rewards=1 ):
     # Convert bidder_valuations to [(bidder, subset, total_value of the subset)]
     subsets_with_values = [
-        (bidder, set(bundle), sum(valuation_dict.values()))
+        (bidder, set(bundle), sum(valuation_dict[item] for item in bundle))
         for bidder, bundles in bidder_valuations.items()
         for bundle, valuation_dict in bundles.items()
     ]
+    subsets_with_values.sort(key=lambda x: x[2], reverse=True)
 
     # Prepare subsets and subset values dictionary with bidder tracking
     subsets = [set(subset) for _, subset, _ in subsets_with_values]
@@ -145,7 +147,11 @@ def combinatorial_auction_with_timeout(bidder_valuations, calculate_rewards=1 ):
     timed_out = 0
     counter = 0
     
-
+    highest_bidder_for_subset = {}
+    for bidder, subset, value in subsets_with_values:
+         subset_frozen = frozenset(subset)
+         if subset_frozen not in highest_bidder_for_subset:
+            highest_bidder_for_subset[subset_frozen] = bidder
 
 
     def backtrack(remaining, current_partition, current_value):
@@ -155,18 +161,17 @@ def combinatorial_auction_with_timeout(bidder_valuations, calculate_rewards=1 ):
             best_value = current_value
             best_partition[:] = current_partition[:]  # Ensure best_partition is updated properly
             
-        for bidder, subset, _ in subsets_with_values:
-            
-            if counter<max_runs and subset.issubset(remaining):
-                subset_value = subset_values[(bidder, frozenset(subset))]
-                counter +=1
-                backtrack(remaining - subset, current_partition + [[bidder, subset]], current_value + subset_value)
-                
-            elif counter>=max_runs:
-                timed_out=1
-                return
-            else:
-                return
+        possible_subsets = [ subset for subset in highest_bidder_for_subset.keys() if subset.issubset(remaining) ]
+        
+        for subset in possible_subsets:
+           if counter < max_runs:
+             counter += 1
+             bidder = highest_bidder_for_subset[subset]  # Direct lookup
+             subset_value = subset_values[(bidder, subset)]
+             backtrack(remaining - subset, current_partition + [[bidder, subset]], current_value + subset_value )
+        else:
+            timed_out = 1
+            return
     
     backtrack(S, [], 0)
     
@@ -187,6 +192,8 @@ batch_rewards_list, sca_rewards_list, sca_filtered_rewards_list, CA_rewards, CA_
 batch_negative, sca_negative, sca_filtered_negative, CA_rewards_negative, CA_rewards_negative_fair, T_out_count, T_out_fair_count = 0, 0, 0, 0, 0, 0, 0
 
 for run in range(num_runs):
+    print(f"Run {run}/{num_runs}")
+    limit_prices={item: 0 for item in range(n)}
     bidder_valuations, bidder_valuations_fair = generate_bidder_valuations()
 
  #   print(bidder_valuations)
@@ -203,25 +210,29 @@ for run in range(num_runs):
     _, CA_rew, score, T_out = combinatorial_auction_with_timeout(bidder_valuations)
     CA_scores.append(score)
     CA_rewards.append(CA_rew)
-    CA_rewards_negative += sum(1 for r in CA_rew if r < 0)
+    CA_rewards_negative += sum(1 for r in CA_rew.values() if r < 0)
     T_out_count += T_out
     
     _, CA_rew_fair, score_fair, T_out_fair  = combinatorial_auction_with_timeout(bidder_valuations_fair)
     CA_scores_fair.append(score_fair)
     CA_rewards_fair.append(CA_rew_fair)
-    CA_rewards_negative_fair += sum(1 for r in CA_rew_fair if r < 0)
+    CA_rewards_negative_fair += sum(1 for r in CA_rew_fair.values() if r < 0)
     T_out_fair_count += T_out_fair
 
-    _, sca_rewards = run_simple_combinatorial_auction(bidder_valuations)
-    sca_scores.append(sum(value for _, _, value, _ in batch_results))
+    sca_results, sca_rewards = run_simple_combinatorial_auction(bidder_valuations)
+    sca_scores.append(sum(value for _, _, value, _ in sca_results))
     sca_rewards_list.append(sum(sca_rewards.values()))
     sca_negative += sum(1 for r in sca_rewards.values() if r < 0)
-
+    if score < sum(value for _, _, value, _ in sca_results):
+        print("Error: combinatorial auction score < SCA score")
    
     filtered_results, sca_filtered_rewards = run_simple_combinatorial_auction(bidder_valuations_fair)
     sca_filtered_scores.append(sum(value for _, _, value, _ in filtered_results))
     sca_filtered_rewards_list.append(sum(sca_filtered_rewards.values()))
     sca_filtered_negative += sum(1 for r in sca_filtered_rewards.values() if r <= 0)
+
+    if score_fair < sum(value for _, _, value, _ in filtered_results):
+        print("Error: fair combinatorial auction score < SCA")
 
 # Print average scores and rewards
 print(f'Average Batch Auction Score: {sum(batch_scores)/num_runs:.2f}, Average Rewards: {sum(batch_rewards_list)/num_runs:.2f}, Negative Rewards: {batch_negative}, Average number of auctions {sum(num_auctions_list)/num_runs:.2f}')
